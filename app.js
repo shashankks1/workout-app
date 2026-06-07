@@ -11,13 +11,16 @@ const S = {
   videoOpen: false,
   dietCat: 'breakfast',
   history: [],
+  sleepLogs: [],
+  sleepDraft: { bedtime: '23:00', wakeTime: '07:00', quality: '' },
   github: { token: '', owner: '', repo: '' },
   videoIds: {}
 };
 
 // ── Storage ─────────────────────────────────────────────────────────────────
 function loadStorage() {
-  try { S.history  = JSON.parse(localStorage.getItem('wt_history') || '[]'); } catch(e) { S.history = []; }
+  try { S.history   = JSON.parse(localStorage.getItem('wt_history') || '[]'); } catch(e) { S.history = []; }
+  try { S.sleepLogs = JSON.parse(localStorage.getItem('wt_sleep')   || '[]'); } catch(e) { S.sleepLogs = []; }
   try {
     const saved = JSON.parse(localStorage.getItem('wt_videos') || '{}');
     const cfg   = (typeof CONFIG !== 'undefined' && CONFIG.videoIds) ? CONFIG.videoIds : {};
@@ -36,6 +39,7 @@ function loadStorage() {
 
 function saveStorage() {
   localStorage.setItem('wt_history', JSON.stringify(S.history));
+  localStorage.setItem('wt_sleep',   JSON.stringify(S.sleepLogs));
   localStorage.setItem('wt_github',  JSON.stringify(S.github));
   localStorage.setItem('wt_videos',  JSON.stringify(S.videoIds));
 }
@@ -64,6 +68,20 @@ function parseYtId(raw) {
   if (m) return m[1];
   if (/^[A-Za-z0-9_-]{11}$/.test(raw.trim())) return raw.trim();
   return null;
+}
+
+function calcDuration(bed, wake) {
+  if (!bed || !wake) return null;
+  const [bh, bm] = bed.split(':').map(Number);
+  const [wh, wm] = wake.split(':').map(Number);
+  let mins = (wh * 60 + wm) - (bh * 60 + bm);
+  if (mins <= 0) mins += 1440; // crossed midnight
+  return { h: Math.floor(mins / 60), m: mins % 60, total: mins };
+}
+
+function fmtDuration(d) {
+  if (!d) return '—';
+  return d.m > 0 ? `${d.h}h ${d.m}m` : `${d.h}h`;
 }
 
 // Returns the last logged sets for an exercise across all history
@@ -201,6 +219,32 @@ async function saveToGitHub(session) {
   }
 }
 
+async function saveSleepToGitHub(entry) {
+  const { token, owner, repo } = S.github;
+  if (!token || !owner || !repo) return { ok: false };
+  const path = `sleep/${entry.date}.json`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(entry, null, 2))));
+  let sha = null;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+    });
+    if (r.ok) sha = (await r.json()).sha;
+  } catch(e) {}
+  try {
+    const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message: `Sleep: ${entry.date}`, content, ...(sha ? { sha } : {}) })
+    });
+    return r.ok ? { ok: true } : { ok: false };
+  } catch(e) { return { ok: false }; }
+}
+
 // ── Verdict logic ─────────────────────────────────────────────────────────────
 function verdict(ex, sets) {
   const done = sets.filter(s => s.done);
@@ -330,6 +374,7 @@ function viewHome() {
         `}
         ${S.history.length ? `<button class="btn btn-surface btn-full" onclick="showView('history')">Session History</button>` : ''}
         <button class="btn btn-surface btn-full" onclick="showView('diet')">Meal Ideas</button>
+        <button class="btn btn-surface btn-full" onclick="showView('sleep')">Sleep Log</button>
         ${!S.github.token ? `<div class="setup-banner" onclick="showView('settings')">GitHub sync not set up — tap Settings to add your token</div>` : ''}
       </div>
     </div>
@@ -519,6 +564,94 @@ function setDietCat(id) {
   render();
 }
 
+function viewSleep() {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayLog = S.sleepLogs.find(e => e.date === today);
+
+  const bed   = todayLog?.bedtime  || S.sleepDraft.bedtime  || '23:00';
+  const wake  = todayLog?.wakeTime || S.sleepDraft.wakeTime || '07:00';
+  const qual  = todayLog?.quality  || S.sleepDraft.quality  || '';
+  const d     = calcDuration(bed, wake);
+  const durTxt = fmtDuration(d);
+  const durCls = d && d.total >= 420 ? 'ok' : 'low';
+
+  const recent = [...S.sleepLogs].reverse().slice(0, 10);
+  const qualLabels = { poor: 'Restless', ok: 'Okay', good: 'Refreshed' };
+  const qualBadge  = { poor: 'badge-skip', ok: 'badge-hold', good: 'badge-up' };
+
+  const avg = recent.length
+    ? Math.round(recent.reduce((a, e) => a + (e.duration || 0), 0) / recent.length)
+    : null;
+
+  const histCards = recent.map(e => {
+    const ed  = calcDuration(e.bedtime, e.wakeTime);
+    const cls = ed && ed.total >= 420 ? 'ok' : 'low';
+    const qb  = qualBadge[e.quality]  || 'badge-hold';
+    const ql  = qualLabels[e.quality] || '—';
+    return `
+      <div class="sleep-hist-card">
+        <div class="shc-left">
+          <div class="shc-date">${fmtDate(e.date)}</div>
+          <div class="shc-time">${e.bedtime} → ${e.wakeTime}</div>
+        </div>
+        <div class="shc-right">
+          <div class="shc-dur ${cls}">${fmtDuration(ed)}</div>
+          <span class="badge ${qb}">${ql}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="view active" id="view-sleep">
+      <div class="view-header">
+        <button class="btn btn-sm btn-surface" onclick="showView('home')">← Back</button>
+        <h1>Sleep</h1>
+        <div style="width:64px"></div>
+      </div>
+      <div class="sleep-target-bar">
+        Target: 7–8 hrs &nbsp;·&nbsp; Sleep is when muscle repairs
+        ${avg ? `&nbsp;·&nbsp; <strong>7-day avg: ${fmtDuration({ h: Math.floor(avg/60), m: avg%60, total: avg })}</strong>` : ''}
+      </div>
+      <div class="sleep-body">
+        <div class="sleep-log-card">
+          <div class="sleep-log-title">Last night</div>
+          <div class="sleep-time-row">
+            <div class="sleep-time-field">
+              <label>Bedtime</label>
+              <input class="sleep-time-input" type="time" id="sleep-bed" value="${bed}" oninput="refreshSleepCalc()">
+            </div>
+            <div class="sleep-arrow">→</div>
+            <div class="sleep-time-field">
+              <label>Wake up</label>
+              <input class="sleep-time-input" type="time" id="sleep-wake" value="${wake}" oninput="refreshSleepCalc()">
+            </div>
+          </div>
+          <div class="sleep-dur-row">
+            <span class="sleep-dur-lbl">Duration</span>
+            <span id="sleep-duration" class="sleep-dur-val ${durCls}">${durTxt}</span>
+          </div>
+          <div class="field-lbl" style="margin-top:16px;margin-bottom:8px">How did you sleep?</div>
+          <div class="seg">
+            ${['poor','ok','good'].map(q => `
+              <button class="seg-btn ${qual === q ? 'on' : ''}" onclick="setSleepQuality('${q}',this)">${qualLabels[q]}</button>
+            `).join('')}
+          </div>
+          <button class="btn btn-primary btn-full" style="margin-top:16px" id="sleep-save-btn" onclick="saveSleepLog()">
+            ${todayLog ? 'Update' : 'Save'}
+          </button>
+          <div class="save-msg" id="sleep-save-msg"></div>
+        </div>
+
+        ${recent.length ? `
+          <div class="section-label">History</div>
+          ${histCards}
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function viewHistory() {
   const recent = [...S.history].reverse().slice(0, 30);
   const cards = recent.map(s => {
@@ -556,6 +689,7 @@ function render() {
     case 'settings': app.innerHTML = viewSettings(); break;
     case 'history':  app.innerHTML = viewHistory();  break;
     case 'diet':     app.innerHTML = viewDiet();     break;
+    case 'sleep':    app.innerHTML = viewSleep();    break;
   }
 }
 
@@ -739,6 +873,59 @@ async function saveSession() {
   }
 
   if (btn) { btn.textContent = 'Saved'; }
+}
+
+function refreshSleepCalc() {
+  const bed  = document.getElementById('sleep-bed')?.value;
+  const wake = document.getElementById('sleep-wake')?.value;
+  S.sleepDraft.bedtime  = bed  || S.sleepDraft.bedtime;
+  S.sleepDraft.wakeTime = wake || S.sleepDraft.wakeTime;
+  const el = document.getElementById('sleep-duration');
+  if (!el) return;
+  const d = calcDuration(bed, wake);
+  el.textContent = fmtDuration(d);
+  el.className = `sleep-dur-val ${d && d.total >= 420 ? 'ok' : 'low'}`;
+}
+
+function setSleepQuality(q, btn) {
+  S.sleepDraft.quality = q;
+  btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+async function saveSleepLog() {
+  const bed  = document.getElementById('sleep-bed')?.value  || S.sleepDraft.bedtime;
+  const wake = document.getElementById('sleep-wake')?.value || S.sleepDraft.wakeTime;
+  const d    = calcDuration(bed, wake);
+  const btn  = document.getElementById('sleep-save-btn');
+  const msg  = document.getElementById('sleep-save-msg');
+
+  const entry = {
+    date:     new Date().toISOString().slice(0, 10),
+    bedtime:  bed,
+    wakeTime: wake,
+    duration: d ? d.total : 0,
+    quality:  S.sleepDraft.quality || 'ok'
+  };
+
+  const idx = S.sleepLogs.findIndex(e => e.date === entry.date);
+  if (idx >= 0) S.sleepLogs[idx] = entry;
+  else S.sleepLogs.push(entry);
+  saveStorage();
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  if (S.github.token && S.github.owner && S.github.repo) {
+    const result = await saveSleepToGitHub(entry);
+    if (msg) {
+      msg.className = result.ok ? 'save-msg ok' : 'save-msg';
+      msg.textContent = result.ok ? '✓ Saved to GitHub' : 'Saved locally';
+    }
+  } else {
+    if (msg) { msg.className = 'save-msg'; msg.textContent = 'Saved locally'; }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Update'; }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
