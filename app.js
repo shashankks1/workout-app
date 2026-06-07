@@ -9,6 +9,7 @@ const S = {
   restTimer: null,
   restRemaining: 0,
   videoOpen: false,
+  dietCat: 'breakfast',
   history: [],
   github: { token: '', owner: '', repo: '' },
   videoIds: {}
@@ -328,6 +329,7 @@ function viewHome() {
           </div>
         `}
         ${S.history.length ? `<button class="btn btn-surface btn-full" onclick="showView('history')">Session History</button>` : ''}
+        <button class="btn btn-surface btn-full" onclick="showView('diet')">Meal Ideas</button>
         ${!S.github.token ? `<div class="setup-banner" onclick="showView('settings')">GitHub sync not set up — tap Settings to add your token</div>` : ''}
       </div>
     </div>
@@ -470,6 +472,53 @@ function viewSettings() {
   `;
 }
 
+function viewDiet() {
+  const cat = MEALS.cats.find(c => c.id === S.dietCat);
+  const items = MEALS.items.filter(m => m.cat === S.dietCat);
+  const { kcalMin, kcalMax, protein, budget } = MEALS.target;
+
+  const catTabs = MEALS.cats.map(c => `
+    <button class="diet-cat-btn ${c.id === S.dietCat ? 'active' : ''}" onclick="setDietCat('${c.id}')">${c.label}</button>
+  `).join('');
+
+  const cards = items.map(m => `
+    <div class="meal-card">
+      <div class="meal-name">${m.name}</div>
+      <div class="meal-ingredients">${m.ingredients.join(' · ')}</div>
+      ${m.note ? `<div class="meal-note">${m.note}</div>` : ''}
+      <div class="meal-macros">
+        <span class="macro-chip macro-protein">P ${m.protein}g</span>
+        <span class="macro-chip">${m.kcal} kcal</span>
+        <span class="macro-chip">₹${m.cost}</span>
+        <span class="macro-chip">${m.time === 0 ? 'no cook' : `${m.time} min`}</span>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="view active" id="view-diet">
+      <div class="view-header">
+        <button class="btn btn-sm btn-surface" onclick="showView('home')">← Back</button>
+        <h1>Meals</h1>
+        <div style="width:64px"></div>
+      </div>
+      <div class="diet-target-bar">
+        ${kcalMin}–${kcalMax} kcal &nbsp;·&nbsp; ${protein}g+ protein &nbsp;·&nbsp; ₹${budget}/day
+      </div>
+      <div class="diet-cats">${catTabs}</div>
+      <div class="diet-body">
+        <div class="diet-tip">${cat.tip}</div>
+        ${cards}
+      </div>
+    </div>
+  `;
+}
+
+function setDietCat(id) {
+  S.dietCat = id;
+  render();
+}
+
 function viewHistory() {
   const recent = [...S.history].reverse().slice(0, 30);
   const cards = recent.map(s => {
@@ -506,6 +555,7 @@ function render() {
     case 'report':   app.innerHTML = viewReport();   break;
     case 'settings': app.innerHTML = viewSettings(); break;
     case 'history':  app.innerHTML = viewHistory();  break;
+    case 'diet':     app.innerHTML = viewDiet();     break;
   }
 }
 
