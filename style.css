@@ -449,5 +449,16 @@ html, body {
 .history-card .hc-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
 .history-card .hc-meta { font-size: 13px; color: var(--muted); }
 
+.setup-banner {
+  background: rgba(122,155,227,.08);
+  border: 1px solid rgba(122,155,227,.2);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--accent);
+  text-align: center;
+  cursor: pointer;
+}
+
 /* Scroll */
 * { scrollbar-width: thin; scrollbar-color: var(--surface2) transparent; }
