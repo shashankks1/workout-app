@@ -2,11 +2,13 @@
 const S = {
   view: 'home',
   session: null,
+  sessionSaved: false,
   currentEx: 0,
   sessionTimer: null,
   sessionElapsed: 0,
   restTimer: null,
   restRemaining: 0,
+  videoOpen: false,
   history: [],
   github: { token: '', owner: '', repo: '' },
   videoIds: {}
@@ -18,7 +20,7 @@ function loadStorage() {
   try {
     const saved = JSON.parse(localStorage.getItem('wt_videos') || '{}');
     const cfg   = (typeof CONFIG !== 'undefined' && CONFIG.videoIds) ? CONFIG.videoIds : {};
-    S.videoIds  = Object.assign({}, cfg, saved); // saved values override CONFIG defaults
+    S.videoIds  = Object.assign({}, cfg, saved);
   } catch(e) {}
   try {
     const saved = JSON.parse(localStorage.getItem('wt_github') || '{}');
@@ -63,13 +65,45 @@ function parseYtId(raw) {
   return null;
 }
 
+// Returns the last logged sets for an exercise across all history
+function getLastExData(exId) {
+  for (let i = S.history.length - 1; i >= 0; i--) {
+    const h = S.history[i];
+    if (h.sets && h.sets[exId]) {
+      const sets = h.sets[exId].filter(s => s.done || s.reps !== '');
+      if (sets.length) return sets;
+    }
+  }
+  return null;
+}
+
 // ── Session ──────────────────────────────────────────────────────────────────
 function startSession(dayId) {
   const day = PROGRAM.days[dayId];
+
+  // Pre-fill weights from the most recent logged session for each exercise
+  const lastWeights = {};
+  for (let i = S.history.length - 1; i >= 0; i--) {
+    const hist = S.history[i];
+    if (!hist.sets) continue;
+    for (const ex of day.exercises) {
+      if (lastWeights[ex.id] !== undefined) continue;
+      const exSets = hist.sets[ex.id];
+      if (exSets) {
+        const w = exSets.find(s => s.weight && s.weight !== '')?.weight;
+        if (w !== undefined) lastWeights[ex.id] = w;
+      }
+    }
+  }
+
   const sets = {};
   for (const ex of day.exercises) {
-    sets[ex.id] = Array.from({ length: ex.sets }, () => ({ weight: '', reps: '', done: false }));
+    const prefill = ex.bodyweight ? '' : (lastWeights[ex.id] || '');
+    sets[ex.id] = Array.from({ length: ex.sets }, () => ({
+      weight: prefill, reps: '', done: false
+    }));
   }
+
   S.session = {
     dayId, sets,
     date: new Date().toISOString().slice(0, 10),
@@ -81,6 +115,9 @@ function startSession(dayId) {
   };
   S.currentEx = 0;
   S.sessionElapsed = 0;
+  S.sessionSaved = false;
+  S.videoOpen = false;
+
   if (S.sessionTimer) clearInterval(S.sessionTimer);
   S.sessionTimer = setInterval(() => {
     S.sessionElapsed++;
@@ -96,6 +133,14 @@ function endSession() {
   S.session.endedAt = Date.now();
   S.session.elapsed = S.sessionElapsed;
   showView('report');
+}
+
+function exitSession() {
+  if (!confirm('Exit this session? Progress will be lost.')) return;
+  if (S.sessionTimer) { clearInterval(S.sessionTimer); S.sessionTimer = null; }
+  if (S.restTimer)    { clearInterval(S.restTimer);    S.restTimer = null; }
+  S.session = null;
+  showView('home');
 }
 
 // ── Rest timer ───────────────────────────────────────────────────────────────
@@ -174,16 +219,30 @@ function buildExBody(ex, idx, day) {
   const exSets = S.session.sets[ex.id];
   const vid = S.videoIds[ex.id] || null;
   const isLast = idx === day.exercises.length - 1;
+  const lastSets = getLastExData(ex.id);
+
+  // Last session reference line
+  const lastRef = lastSets ? `
+    <div class="last-ref">
+      Last: ${lastSets.map(s =>
+        ex.bodyweight ? `BW×${s.reps || '—'}` : `${s.weight || '?'}×${s.reps || '—'}`
+      ).join(' · ')}
+    </div>
+  ` : '';
 
   const setRows = exSets.map((set, i) => `
     <div class="set-row">
       <div class="set-num">${i + 1}</div>
-      <input class="set-input" type="number" inputmode="decimal" placeholder="kg"
-        value="${set.weight}"
-        oninput="updateSet(${i},'weight',this.value)"
-        ${ex.bodyweight ? 'disabled' : ''}
-      />
-      <input class="set-input" type="text" inputmode="numeric" placeholder="${ex.repsTarget}"
+      ${ex.bodyweight
+        ? `<div class="set-input set-bw">BW</div>`
+        : `<input class="set-input" type="text" inputmode="decimal" placeholder="—"
+             data-field="weight"
+             value="${set.weight}"
+             oninput="updateSet(${i},'weight',this.value)" />`
+      }
+      <input class="set-input" type="text" inputmode="numeric"
+        placeholder="${ex.repsTarget}"
+        data-field="reps"
         value="${set.reps}"
         oninput="updateSet(${i},'reps',this.value)"
       />
@@ -192,10 +251,17 @@ function buildExBody(ex, idx, day) {
   `).join('');
 
   return `
-    ${vid
-      ? `<div class="video-wrap"><iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1" allow="autoplay; fullscreen" allowfullscreen></iframe></div>`
-      : `<div class="video-empty"><p>No tutorial video set</p><button class="btn btn-sm btn-surface" onclick="askVideo('${ex.id}')">Add YouTube link</button></div>`
-    }
+    ${vid ? `
+      <div class="video-section${S.videoOpen ? ' open' : ''}">
+        <button class="video-toggle" onclick="toggleVideo(this)">
+          ${S.videoOpen ? '▼ Hide video' : '▶ Form video'}
+        </button>
+        <div class="video-wrap">
+          <iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&modestbranding=1"
+            allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+      </div>
+    ` : ''}
     <div class="ex-info">
       <h2>${ex.name}</h2>
       <div class="ex-meta">
@@ -203,6 +269,7 @@ function buildExBody(ex, idx, day) {
         <span>${ex.repsTarget} reps</span>
         <span>${ex.rest}s rest</span>
       </div>
+      ${lastRef}
     </div>
     ${ex.note ? `<div class="ex-note">${ex.note}</div>` : ''}
     <div class="sets-wrap">
@@ -273,6 +340,7 @@ function viewSession() {
   return `
     <div class="view active" id="view-session">
       <div class="session-header">
+        <button class="btn btn-sm btn-surface" onclick="exitSession()">Exit</button>
         <div class="session-title">${day.name}</div>
         <span id="session-clock" class="session-clock">${fmt(S.sessionElapsed)}</span>
       </div>
@@ -309,7 +377,7 @@ function viewReport() {
     <div class="view active" id="view-report">
       <div class="view-header">
         <h1>Report</h1>
-        <button class="btn btn-sm btn-surface" onclick="showView('home')">Home</button>
+        <button class="btn btn-sm btn-surface" onclick="leaveReport()">Home</button>
       </div>
       <div class="report-body">
         <div class="report-summary">
@@ -341,13 +409,13 @@ function viewReport() {
           </div>
         </div>
 
-        <div class="section-label">Exercise Breakdown</div>
-        ${cards}
-
         <div class="save-row">
           <button class="btn btn-primary btn-full" id="save-btn" onclick="saveSession()">Save Session</button>
           <div class="save-msg" id="save-msg"></div>
         </div>
+
+        <div class="section-label" style="margin-top:20px">Exercise Breakdown</div>
+        ${cards}
       </div>
     </div>
   `;
@@ -360,7 +428,7 @@ function viewSettings() {
       <span class="video-row-name">${ex.name}</span>
       <input class="video-id-input" type="text" placeholder="YouTube URL or ID"
         value="${S.videoIds[ex.id] || ''}"
-        onchange="setVid('${ex.id}',this.value)">
+        oninput="setVid('${ex.id}',this.value)">
     </div>
   `).join('');
 
@@ -449,12 +517,19 @@ function showView(v) {
 // ── Event handlers ────────────────────────────────────────────────────────────
 function goEx(idx) {
   S.currentEx = idx;
+  S.videoOpen = false;
   const day = PROGRAM.days[S.session.dayId];
   const ex  = day.exercises[idx];
   document.getElementById('ex-body').innerHTML = buildExBody(ex, idx, day);
   document.getElementById('ex-nav').innerHTML  = buildDots(day);
-  // Re-attach rest timer display if timer is running
   if (S.restTimer || S.restRemaining > 0) tickRest();
+}
+
+function toggleVideo(btn) {
+  S.videoOpen = !S.videoOpen;
+  const section = btn.closest('.video-section');
+  section.classList.toggle('open', S.videoOpen);
+  btn.textContent = S.videoOpen ? '▼ Hide video' : '▶ Form video';
 }
 
 function showFinisher() {
@@ -470,19 +545,19 @@ function showFinisher() {
         <div class="finisher-fields">
           <div>
             <label>Duration (min)</label>
-            <input class="finisher-input" type="number" inputmode="numeric" placeholder="${day.finisher.duration}"
+            <input class="finisher-input" type="text" inputmode="numeric" placeholder="${day.finisher.duration}"
               value="${fin.duration}" oninput="S.session.finisher.duration=this.value">
           </div>
           <div>
             <label>Resistance level</label>
-            <input class="finisher-input" type="number" inputmode="numeric" placeholder="—"
+            <input class="finisher-input" type="text" inputmode="numeric" placeholder="—"
               value="${fin.resistance}" oninput="S.session.finisher.resistance=this.value">
           </div>
         </div>
       </div>
     </div>
     <div class="end-wrap">
-      <button class="btn btn-danger btn-full" onclick="endSession()">End Session & Get Report</button>
+      <button class="btn btn-primary btn-full" onclick="endSession()">End Session & Get Report</button>
     </div>
   `;
   document.querySelectorAll('.ex-dot').forEach(d => d.classList.remove('active'));
@@ -497,15 +572,34 @@ function toggleDone(i) {
   const ex = PROGRAM.days[S.session.dayId].exercises[S.currentEx];
   const set = S.session.sets[ex.id][i];
   set.done = !set.done;
+
   const btns = document.querySelectorAll('.set-check');
   btns[i].className = `set-check ${set.done ? 'done' : ''}`;
   btns[i].textContent = set.done ? '✓' : '';
-  if (set.done) startRest(ex.rest);
-  // Update dot
+
+  if (set.done) {
+    startRest(ex.rest);
+
+    // Auto-fill weight to the next set if it's still empty
+    if (!ex.bodyweight && set.weight !== '') {
+      const exSets = S.session.sets[ex.id];
+      if (i + 1 < exSets.length && exSets[i + 1].weight === '') {
+        exSets[i + 1].weight = set.weight;
+        const rows = document.querySelectorAll('.set-row');
+        if (rows[i + 1]) {
+          const wInput = rows[i + 1].querySelector('[data-field="weight"]');
+          if (wInput) wInput.value = set.weight;
+        }
+      }
+    }
+  }
+
+  // Update dot when all sets done
   const allDone = S.session.sets[ex.id].every(s => s.done);
   const dots = document.querySelectorAll('.ex-dot');
-  if (dots[S.currentEx] && allDone) {
-    dots[S.currentEx].className = 'ex-dot done';
+  if (dots[S.currentEx]) {
+    dots[S.currentEx].className = `ex-dot ${S.currentEx === S.currentEx ? 'active' : (allDone ? 'done' : '')}`;
+    if (allDone) dots[S.currentEx].className = 'ex-dot done';
   }
 }
 
@@ -513,6 +607,11 @@ function pick(field, val, btn) {
   S.session[field] = val;
   btn.closest('.seg').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
+}
+
+function leaveReport() {
+  if (!S.sessionSaved && !confirm('Session not saved yet. Leave anyway?')) return;
+  showView('home');
 }
 
 function gh(field, val) {
@@ -576,6 +675,7 @@ async function saveSession() {
 
   S.history.push({ ...S.session });
   saveStorage();
+  S.sessionSaved = true;
 
   if (S.github.token && S.github.owner && S.github.repo) {
     if (msg) { msg.className = 'save-msg'; msg.textContent = 'Uploading to GitHub…'; }
