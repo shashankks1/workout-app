@@ -15,7 +15,7 @@ const MEALS = {
     {
       id: 'dinner',
       label: 'Dinner',
-      tip: 'Evening gym means dinner is your post-workout meal. Prioritise protein here — eggs, chicken, or soy chunks.'
+      tip: 'Evening gym means dinner is your post-workout meal. Prioritise protein here — eggs or soy chunks are your best bets at home.'
     },
     {
       id: 'snack',
@@ -67,10 +67,10 @@ const MEALS = {
 
     {
       cat: 'lunch',
-      name: 'Chicken Breast + Rice + Salad',
-      ingredients: ['200g raw chicken breast', '100g cooked rice', 'Cucumber, onion, lemon (salad)', '1 tsp oil · jeera, salt, pepper'],
-      protein: 50, kcal: 450, cost: 65, time: 25,
-      note: 'Marinate in curd + spices 30 min, then pan-fry. Highest protein lunch.'
+      name: 'Soy Chunks + Rice + 3 Eggs',
+      ingredients: ['40g soy chunks (dry)', '100g cooked rice', '3 whole eggs (boiled or fried)', 'Tomato-onion gravy · 1 tsp oil · spices'],
+      protein: 41, kcal: 555, cost: 50, time: 25,
+      note: 'Highest protein home lunch. Soy chunks soak in hot water 10 min before cooking.'
     },
     {
       cat: 'lunch',
@@ -112,10 +112,10 @@ const MEALS = {
     },
     {
       cat: 'dinner',
-      name: 'Chicken Stir Fry + 2 Rotis',
-      ingredients: ['150g raw chicken breast', '2 whole wheat rotis', 'Capsicum, onion, garlic', 'Soy sauce + spices · 1 tsp oil'],
-      protein: 41, kcal: 440, cost: 60, time: 20,
-      note: 'Cook on high heat, quick. Good post-workout dinner when you want something light but high protein.'
+      name: '5-Egg Bhurji + 2 Rotis',
+      ingredients: ['5 whole eggs', '2 whole wheat rotis', 'Onion, tomato, capsicum, green chilli', '1 tsp butter · jeera, salt, pepper'],
+      protein: 36, kcal: 600, cost: 50, time: 12,
+      note: 'Best quick post-workout dinner. Add a squeeze of lemon at the end. Keeps you full for hours.'
     },
     {
       cat: 'dinner',
