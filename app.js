@@ -261,6 +261,7 @@ function viewHome() {
           </div>
         `}
         ${S.history.length ? `<button class="btn btn-surface btn-full" onclick="showView('history')">Session History</button>` : ''}
+        ${!S.github.token ? `<div class="setup-banner" onclick="showView('settings')">GitHub sync not set up — tap Settings to add your token</div>` : ''}
       </div>
     </div>
   `;
