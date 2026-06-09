@@ -353,13 +353,19 @@ function buildDots(day) {
 function buildWarmup(day) {
   if (!day.warmup || !day.warmup.length) return '';
   const open = S.session.warmupOpen;
-  const items = day.warmup.map(w => `
-    <div class="warmup-item">
-      <div class="wu-move">${w.move}</div>
-      <div class="wu-detail">${w.detail}</div>
-      ${w.note ? `<div class="wu-note">${w.note}</div>` : ''}
-    </div>
-  `).join('');
+  const items = day.warmup.map(w => {
+    const hasVid = w.id && S.videoIds[w.id];
+    return `
+      <div class="warmup-item">
+        <div class="wu-move-row">
+          <div class="wu-move">${w.move}</div>
+          ${hasVid ? `<button class="wu-vid-btn" data-wuid="${w.id}" onclick="toggleWarmupVideo('${w.id}',this)">▶ watch</button>` : ''}
+        </div>
+        <div class="wu-detail">${w.detail}</div>
+        ${w.note ? `<div class="wu-note">${w.note}</div>` : ''}
+      </div>
+    `;
+  }).join('');
   return `
     <div class="warmup-section${open ? ' open' : ''}" id="warmup-section">
       <button class="warmup-toggle" onclick="toggleWarmup()">
@@ -378,6 +384,30 @@ function toggleWarmup() {
   section.classList.toggle('open', S.session.warmupOpen);
   const lbl = section.querySelector('.wu-label');
   if (lbl) lbl.textContent = `${S.session.warmupOpen ? '▼' : '▶'} Warmup`;
+}
+
+function toggleWarmupVideo(id, btn) {
+  const vidId = S.videoIds[id];
+  if (!vidId) return;
+  // Close any other open warmup video
+  document.querySelectorAll('.wu-video-wrap').forEach(w => {
+    if (w.previousElementSibling !== btn) { w.remove(); }
+  });
+  document.querySelectorAll('.wu-vid-btn').forEach(b => {
+    if (b !== btn) b.textContent = '▶ watch';
+  });
+  // Toggle this one
+  const existing = btn.closest('.warmup-item').querySelector('.wu-video-wrap');
+  if (existing) {
+    existing.remove();
+    btn.textContent = '▶ watch';
+  } else {
+    const div = document.createElement('div');
+    div.className = 'wu-video-wrap';
+    div.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${vidId}?rel=0&modestbranding=1" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+    btn.closest('.warmup-item').appendChild(div);
+    btn.textContent = '▼ hide';
+  }
 }
 
 function viewCardioSession(day) {
