@@ -696,5 +696,66 @@ html, body {
 .shc-dur.ok  { color: var(--success); }
 .shc-dur.low { color: var(--warning); }
 
+/* Warmup section */
+.warmup-section {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.warmup-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  gap: 8px;
+}
+.wu-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.warmup-body {
+  display: none;
+  padding: 4px 16px 16px;
+  flex-direction: column;
+  gap: 10px;
+}
+.warmup-section.open .warmup-body {
+  display: flex;
+}
+.warmup-item {
+  border-left: 2px solid var(--accent);
+  padding: 4px 0 4px 12px;
+}
+.wu-move   { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 1px; }
+.wu-detail { font-size: 12px; color: var(--muted); }
+.wu-note   { font-size: 11px; color: var(--accent); margin-top: 2px; opacity: 0.85; }
+
+/* Cardio session */
+.cardio-wrap { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.cardio-options { display: flex; flex-direction: column; gap: 10px; }
+.cardio-option {
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cardio-option.selected {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+.co-name     { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.co-duration { font-size: 13px; color: var(--accent); font-weight: 600; margin-bottom: 6px; }
+.co-note     { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
 /* Scroll */
 * { scrollbar-width: thin; scrollbar-color: var(--surface2) transparent; }
