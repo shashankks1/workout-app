@@ -56,10 +56,17 @@ function fmtDate(iso) {
 }
 
 function getNextDay() {
-  const seq = PROGRAM.sequence;
-  if (!S.history.length) return seq[0];
-  const last = S.history[S.history.length - 1].dayId;
-  return seq[(seq.indexOf(last) + 1) % seq.length];
+  const pool = PROGRAM.rotationPool;
+  if (!S.history.length) return 'upper';
+  const completedCycles = S.history.filter(h => h.dayId === 'cardio').length;
+  const rotIdx = completedCycles % pool.length;
+  const cycle = ['upper', 'core', 'legs', pool[rotIdx], 'cardio'];
+  let cycleStart = 0;
+  for (let i = S.history.length - 1; i >= 0; i--) {
+    if (S.history[i].dayId === 'cardio') { cycleStart = i + 1; break; }
+  }
+  const pos = (S.history.length - cycleStart) % cycle.length;
+  return cycle[pos];
 }
 
 function parseYtId(raw) {
@@ -99,28 +106,28 @@ function getLastExData(exId) {
 // ── Session ──────────────────────────────────────────────────────────────────
 function startSession(dayId) {
   const day = PROGRAM.days[dayId];
+  const sets = {};
 
-  // Pre-fill weights from the most recent logged session for each exercise
-  const lastWeights = {};
-  for (let i = S.history.length - 1; i >= 0; i--) {
-    const hist = S.history[i];
-    if (!hist.sets) continue;
-    for (const ex of day.exercises) {
-      if (lastWeights[ex.id] !== undefined) continue;
-      const exSets = hist.sets[ex.id];
-      if (exSets) {
-        const w = exSets.find(s => s.weight && s.weight !== '')?.weight;
-        if (w !== undefined) lastWeights[ex.id] = w;
+  if (day.type !== 'cardio') {
+    const lastWeights = {};
+    for (let i = S.history.length - 1; i >= 0; i--) {
+      const hist = S.history[i];
+      if (!hist.sets) continue;
+      for (const ex of day.exercises) {
+        if (lastWeights[ex.id] !== undefined) continue;
+        const exSets = hist.sets[ex.id];
+        if (exSets) {
+          const w = exSets.find(s => s.weight && s.weight !== '')?.weight;
+          if (w !== undefined) lastWeights[ex.id] = w;
+        }
       }
     }
-  }
-
-  const sets = {};
-  for (const ex of day.exercises) {
-    const prefill = ex.bodyweight ? '' : (lastWeights[ex.id] || '');
-    sets[ex.id] = Array.from({ length: ex.sets }, () => ({
-      weight: prefill, reps: '', done: false
-    }));
+    for (const ex of day.exercises) {
+      const prefill = ex.bodyweight ? '' : (lastWeights[ex.id] || '');
+      sets[ex.id] = Array.from({ length: ex.sets }, () => ({
+        weight: prefill, reps: '', done: false
+      }));
+    }
   }
 
   S.session = {
@@ -130,7 +137,9 @@ function startSession(dayId) {
     endedAt: null,
     elapsed: 0,
     finisher: { duration: '', resistance: '' },
-    energy: '', feel: '', notes: ''
+    energy: '', feel: '', notes: '',
+    warmupOpen: true,
+    cardioType: '', cardioDuration: '', cardioIntensity: ''
   };
   S.currentEx = 0;
   S.sessionElapsed = 0;
@@ -341,11 +350,108 @@ function buildDots(day) {
   }).join('');
 }
 
+function buildWarmup(day) {
+  if (!day.warmup || !day.warmup.length) return '';
+  const open = S.session.warmupOpen;
+  const items = day.warmup.map(w => `
+    <div class="warmup-item">
+      <div class="wu-move">${w.move}</div>
+      <div class="wu-detail">${w.detail}</div>
+      ${w.note ? `<div class="wu-note">${w.note}</div>` : ''}
+    </div>
+  `).join('');
+  return `
+    <div class="warmup-section${open ? ' open' : ''}" id="warmup-section">
+      <button class="warmup-toggle" onclick="toggleWarmup()">
+        <span class="wu-label">${open ? '▼' : '▶'} Warmup</span>
+        <span class="wu-count">${day.warmup.length} moves · ~5 min</span>
+      </button>
+      <div class="warmup-body">${items}</div>
+    </div>
+  `;
+}
+
+function toggleWarmup() {
+  S.session.warmupOpen = !S.session.warmupOpen;
+  const section = document.getElementById('warmup-section');
+  if (!section) return;
+  section.classList.toggle('open', S.session.warmupOpen);
+  const lbl = section.querySelector('.wu-label');
+  if (lbl) lbl.textContent = `${S.session.warmupOpen ? '▼' : '▶'} Warmup`;
+}
+
+function viewCardioSession(day) {
+  const sel = S.session.cardioType;
+  const optCards = day.options.map(opt => `
+    <div class="cardio-option${sel === opt.id ? ' selected' : ''}" onclick="selectCardio('${opt.id}',this)">
+      <div class="co-name">${opt.name}</div>
+      <div class="co-duration">${opt.duration}</div>
+      <div class="co-note">${opt.note}</div>
+    </div>
+  `).join('');
+  return `
+    <div class="view active" id="view-session">
+      <div class="session-header">
+        <button class="btn btn-sm btn-surface" onclick="exitSession()">Exit</button>
+        <div class="session-title">${day.name}</div>
+        <span id="session-clock" class="session-clock">${fmt(S.sessionElapsed)}</span>
+      </div>
+      ${buildWarmup(day)}
+      <div class="ex-body" style="flex:1;overflow-y:auto">
+        <div class="cardio-wrap">
+          <div class="section-label" style="margin-bottom:12px">Pick your activity</div>
+          <div class="cardio-options">${optCards}</div>
+          <div class="finisher-card">
+            <h3>Log it</h3>
+            <div class="finisher-fields">
+              <div>
+                <label>Duration (min)</label>
+                <input class="finisher-input" type="text" inputmode="numeric" placeholder="25"
+                  value="${S.session.cardioDuration}" oninput="S.session.cardioDuration=this.value">
+              </div>
+              <div>
+                <label>Intensity (1–10)</label>
+                <input class="finisher-input" type="text" inputmode="numeric" placeholder="6"
+                  value="${S.session.cardioIntensity}" oninput="S.session.cardioIntensity=this.value">
+              </div>
+            </div>
+          </div>
+          <div class="end-wrap">
+            <button class="btn btn-primary btn-full" onclick="endSession()">End Session & Get Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function selectCardio(typeId, el) {
+  S.session.cardioType = typeId;
+  document.querySelectorAll('.cardio-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
 // ── Views ─────────────────────────────────────────────────────────────────────
 function viewHome() {
   const nextId = getNextDay();
   const day = PROGRAM.days[nextId];
   const last = S.history.length ? S.history[S.history.length - 1] : null;
+
+  // Cycle info for "Day X of 5"
+  const pool = PROGRAM.rotationPool;
+  const completedCycles = S.history.filter(h => h.dayId === 'cardio').length;
+  const rotIdx = completedCycles % pool.length;
+  const cycle = ['upper', 'core', 'legs', pool[rotIdx], 'cardio'];
+  let cycleStart = 0;
+  for (let i = S.history.length - 1; i >= 0; i--) {
+    if (S.history[i].dayId === 'cardio') { cycleStart = i + 1; break; }
+  }
+  const pos = (S.history.length - cycleStart) % cycle.length;
+  const dayNum = pos + 1;
+  const dayLabel = pos === 3
+    ? `Week ${completedCycles + 1} · Day ${dayNum} of 5 — Rotation`
+    : `Week ${completedCycles + 1} · Day ${dayNum} of 5`;
+
   return `
     <div class="view active" id="view-home">
       <div class="view-header">
@@ -354,16 +460,16 @@ function viewHome() {
       </div>
       <div class="home-body">
         <div class="next-card">
-          <div class="eyebrow">Next Up</div>
+          <div class="eyebrow">${dayLabel}</div>
           <h2>${day.name}</h2>
           <div class="tag">${day.tag}</div>
-          ${day.patellaStrap ? `<div class="strap-badge">⚠ Patella strap required</div>` : ''}
+          ${day.patellaStrap ? `<div class="strap-badge">Patella strap required</div>` : ''}
           <button class="btn btn-primary btn-full" onclick="startSession('${nextId}')">Start Session</button>
         </div>
         ${last ? `
           <div class="last-card">
             <div class="eyebrow">Last Session</div>
-            <div class="name">${PROGRAM.days[last.dayId].name}</div>
+            <div class="name">${(PROGRAM.days[last.dayId] || { name: last.dayId }).name}</div>
             <div class="meta">${fmtDate(last.date)} · ${fmt(last.elapsed || 0)}</div>
           </div>
         ` : `
@@ -383,7 +489,8 @@ function viewHome() {
 
 function viewSession() {
   const day = PROGRAM.days[S.session.dayId];
-  const ex  = day.exercises[S.currentEx];
+  if (day.type === 'cardio') return viewCardioSession(day);
+  const ex = day.exercises[S.currentEx];
   return `
     <div class="view active" id="view-session">
       <div class="session-header">
@@ -391,8 +498,54 @@ function viewSession() {
         <div class="session-title">${day.name}</div>
         <span id="session-clock" class="session-clock">${fmt(S.sessionElapsed)}</span>
       </div>
+      ${buildWarmup(day)}
       <div class="ex-nav" id="ex-nav">${buildDots(day)}</div>
       <div class="ex-body" id="ex-body">${buildExBody(ex, S.currentEx, day)}</div>
+    </div>
+  `;
+}
+
+function viewCardioReport(day, session) {
+  const nameMap = { bike: 'Cybex Bike', row: 'Rowing Machine', walk: 'Brisk Walk' };
+  return `
+    <div class="view active" id="view-report">
+      <div class="view-header">
+        <h1>Report</h1>
+        <button class="btn btn-sm btn-surface" onclick="leaveReport()">Home</button>
+      </div>
+      <div class="report-body">
+        <div class="report-summary">
+          <h2>${day.name}</h2>
+          <div class="report-date">${fmtDate(session.date)}</div>
+          <div class="stats">
+            <div class="stat"><div class="val">${fmt(session.elapsed || 0)}</div><div class="lbl">Total Time</div></div>
+            <div class="stat"><div class="val">${session.cardioDuration || '—'}<span style="font-size:14px"> min</span></div><div class="lbl">Active</div></div>
+            <div class="stat"><div class="val" style="font-size:13px">${nameMap[session.cardioType] || '—'}</div><div class="lbl">Activity</div></div>
+          </div>
+        </div>
+        <div class="report-fields">
+          <div class="field-group">
+            <div class="field-lbl">Energy today</div>
+            <div class="seg">
+              ${['low','medium','high'].map(e => `<button class="seg-btn ${session.energy===e?'on':''}" onclick="pick('energy','${e}',this)">${e[0].toUpperCase()+e.slice(1)}</button>`).join('')}
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-lbl">Session feel</div>
+            <div class="seg">
+              ${['rough','average','good'].map(f => `<button class="seg-btn ${session.feel===f?'on':''}" onclick="pick('feel','${f}',this)">${f[0].toUpperCase()+f.slice(1)}</button>`).join('')}
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-lbl">Notes</div>
+            <textarea class="notes-ta" placeholder="How did it feel? Breathing, pace, anything…" oninput="S.session.notes=this.value">${session.notes}</textarea>
+          </div>
+        </div>
+        <div class="save-row">
+          <button class="btn btn-primary btn-full" id="save-btn" onclick="saveSession()">Save Session</button>
+          <div class="save-msg" id="save-msg"></div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -400,6 +553,7 @@ function viewSession() {
 function viewReport() {
   const { session } = S;
   const day = PROGRAM.days[session.dayId];
+  if (day.type === 'cardio') return viewCardioReport(day, session);
   const totalDone = Object.values(session.sets).flat().filter(s => s.done).length;
 
   const cards = day.exercises.map(ex => {
@@ -469,7 +623,7 @@ function viewReport() {
 }
 
 function viewSettings() {
-  const allEx = PROGRAM.sequence.flatMap(id => PROGRAM.days[id].exercises);
+  const allEx = Object.values(PROGRAM.days).filter(d => d.type !== 'cardio').flatMap(d => d.exercises);
   const rows = allEx.map(ex => `
     <div class="video-row">
       <span class="video-row-name">${ex.name}</span>
@@ -655,8 +809,8 @@ function viewSleep() {
 function viewHistory() {
   const recent = [...S.history].reverse().slice(0, 30);
   const cards = recent.map(s => {
-    const day = PROGRAM.days[s.dayId];
-    const done = Object.values(s.sets).flat().filter(x => x.done).length;
+    const day = PROGRAM.days[s.dayId] || { name: s.dayId };
+    const done = Object.values(s.sets || {}).flat().filter(x => x.done).length;
     return `
       <div class="history-card">
         <div class="hc-name">${day.name}</div>
@@ -718,6 +872,7 @@ function toggleVideo(btn) {
 
 function showFinisher() {
   const day = PROGRAM.days[S.session.dayId];
+  if (!day.finisher) return;
   const fin = S.session.finisher;
   document.getElementById('ex-body').innerHTML = `
     <div class="ex-info" style="padding-top:20px">
