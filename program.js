@@ -9,12 +9,12 @@ const PROGRAM = {
       tag: 'Chest · Shoulders · Triceps',
       patellaStrap: false,
       warmup: [
-        { move: 'Arm Circles',                                detail: '20 forward, 20 backward' },
-        { move: 'Shoulder Rolls',                              detail: '15 each direction' },
-        { move: 'Band Pull-Apart (or face pull, very light)',  detail: '2 × 15', note: 'Activates rear delts before pressing.' },
-        { move: 'Cat-Cow',                                    detail: '10 slow reps' },
-        { move: 'Wrist Circles',                              detail: '20 each direction', note: 'Right elbow — warm it up before any pressing.' },
-        { move: 'Chest Opener',                               detail: '30 sec', note: 'Hands behind head, open elbows wide, breathe.' }
+        { id: 'arm-circles',    move: 'Arm Circles',                                detail: '20 forward, 20 backward' },
+        { id: 'shoulder-rolls', move: 'Shoulder Rolls',                              detail: '15 each direction' },
+        { id: 'band-pull-apart',move: 'Band Pull-Apart (or face pull, very light)',  detail: '2 × 15', note: 'Activates rear delts before pressing.' },
+        { id: 'cat-cow',        move: 'Cat-Cow',                                    detail: '10 slow reps' },
+        { id: 'wrist-circles',  move: 'Wrist Circles',                              detail: '20 each direction', note: 'Right elbow — warm it up before any pressing.' },
+        { id: 'chest-opener',   move: 'Chest Opener',                               detail: '30 sec', note: 'Hands behind head, open elbows wide, breathe.' }
       ],
       exercises: [
         { id: 'db-bench',            name: 'Dumbbell Bench Press',              sets: 4, repsTarget: '10–12', rest: 90, note: 'Elbows at 45° to body, not flared.' },
@@ -34,12 +34,12 @@ const PROGRAM = {
       tag: 'Lower Back · Glutes · Core · Pelvic Stability',
       patellaStrap: false,
       warmup: [
-        { move: 'Cat-Cow',                       detail: '10 slow reps', note: 'Warm the spine before any loaded work.' },
-        { move: "Child's Pose",                   detail: '30 sec' },
-        { move: 'Glute Bridge (bodyweight)',      detail: '2 × 15', note: 'Drive through heels, squeeze glutes at top.' },
-        { move: 'Hip Flexor Stretch (kneeling)',  detail: '30 sec each side' },
-        { move: 'Ankle Circles',                  detail: '20 each direction per ankle', note: 'Right ankle especially.' },
-        { move: 'Bird Dog (slow)',                detail: '1 × 8 each side', note: 'Lower back braced throughout.' }
+        { id: 'cat-cow',             move: 'Cat-Cow',                       detail: '10 slow reps', note: 'Warm the spine before any loaded work.' },
+        { id: 'childs-pose',         move: "Child's Pose",                   detail: '30 sec' },
+        { id: 'glute-bridge-bw',     move: 'Glute Bridge (bodyweight)',      detail: '2 × 15', note: 'Drive through heels, squeeze glutes at top.' },
+        { id: 'hip-flexor-stretch',  move: 'Hip Flexor Stretch (kneeling)',  detail: '30 sec each side' },
+        { id: 'ankle-circles',       move: 'Ankle Circles',                  detail: '20 each direction per ankle', note: 'Right ankle especially.' },
+        { id: 'bird-dog-bw',         move: 'Bird Dog (slow)',                detail: '1 × 8 each side', note: 'Lower back braced throughout.' }
       ],
       exercises: [
         { id: 'hip-thrust',        name: 'Hip Thrust (barbell or dumbbell)', sets: 4, repsTarget: '12',               rest: 75, note: 'Upper back on bench, drive through heels, full glute squeeze at top.' },
@@ -59,13 +59,13 @@ const PROGRAM = {
       tag: 'Quads · Hamstrings · Calves',
       patellaStrap: true,
       warmup: [
-        { move: 'Bodyweight Squat',             detail: '2 × 15', note: 'Slow controlled descent. Feel the knee tracking.' },
-        { move: 'Leg Swings (forward / back)',  detail: '10 each leg' },
-        { move: 'Leg Swings (side to side)',    detail: '10 each leg' },
-        { move: 'Hip Circles',                  detail: '20 each direction' },
-        { move: 'Ankle Circles',                detail: '20 each direction per ankle', note: 'Right ankle especially.' },
-        { move: 'Walking Lunges (bodyweight)',  detail: '10 steps', note: 'Knee tracks over toes — slow.' },
-        { move: 'Light Leg Press (warmup set)', detail: '1 × 15 at 50% working weight', note: 'Before loading up.' }
+        { id: 'bw-squat',          move: 'Bodyweight Squat',             detail: '2 × 15', note: 'Slow controlled descent. Feel the knee tracking.' },
+        { id: 'leg-swings',        move: 'Leg Swings (forward / back)',  detail: '10 each leg' },
+        { id: 'leg-swings',        move: 'Leg Swings (side to side)',    detail: '10 each leg' },
+        { id: 'hip-circles',       move: 'Hip Circles',                  detail: '20 each direction' },
+        { id: 'ankle-circles',     move: 'Ankle Circles',                detail: '20 each direction per ankle', note: 'Right ankle especially.' },
+        { id: 'walking-lunges-bw', move: 'Walking Lunges (bodyweight)',  detail: '10 steps', note: 'Knee tracks over toes — slow.' },
+        { id: 'leg-press',         move: 'Light Leg Press (warmup set)', detail: '1 × 15 at 50% working weight', note: 'Before loading up.' }
       ],
       exercises: [
         { id: 'leg-press',             name: 'Leg Press',                   sets: 4, repsTarget: '12',       rest: 90, note: 'No locking knees at top. Patella strap on.' },
@@ -85,12 +85,12 @@ const PROGRAM = {
       tag: 'Back · Biceps · Rear Delts',
       patellaStrap: false,
       warmup: [
-        { move: 'Arm Circles',     detail: '20 forward, 20 backward' },
-        { move: 'Shoulder Rolls',   detail: '15 each direction' },
-        { move: 'Band Pull-Apart',  detail: '2 × 15', note: 'Light cable is fine. Activates rear delts.' },
-        { move: 'Lat Stretch',      detail: '30 sec each side', note: 'Hold cable stack or pole, lean away, breathe into the lat.' },
-        { move: 'Dead Hang',        detail: '20–30 sec', note: 'If pull-up bar available — decompresses the spine.' },
-        { move: 'Cat-Cow',         detail: '10 reps' }
+        { id: 'arm-circles',    move: 'Arm Circles',    detail: '20 forward, 20 backward' },
+        { id: 'shoulder-rolls', move: 'Shoulder Rolls',  detail: '15 each direction' },
+        { id: 'band-pull-apart',move: 'Band Pull-Apart', detail: '2 × 15', note: 'Light cable is fine. Activates rear delts.' },
+        { id: 'lat-stretch',    move: 'Lat Stretch',     detail: '30 sec each side', note: 'Hold cable stack or pole, lean away, breathe into the lat.' },
+        { id: 'dead-hang',      move: 'Dead Hang',       detail: '20–30 sec', note: 'If pull-up bar available — decompresses the spine.' },
+        { id: 'cat-cow',        move: 'Cat-Cow',         detail: '10 reps' }
       ],
       exercises: [
         { id: 'db-row',           name: 'Single-Arm Dumbbell Row',         sets: 4, repsTarget: '10 / arm', rest: 90, note: "Don't rotate torso. Right arm sets the weight." },
@@ -110,7 +110,7 @@ const PROGRAM = {
       type: 'cardio',
       patellaStrap: false,
       warmup: [
-        { move: 'Easy start', detail: 'First 5 min at 50% effort', note: "Let your heart rate rise gradually. Don't jump into intensity." }
+        { id: 'cardio-start', move: 'Easy start', detail: 'First 5 min at 50% effort', note: "Let your heart rate rise gradually. Don't jump into intensity." }
       ],
       options: [
         { id: 'bike', name: 'Cybex Bike',     duration: '25–30 min', note: 'Zone 2 — you should be able to hold a full sentence while pedaling.' },
