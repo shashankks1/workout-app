@@ -41,6 +41,24 @@ const CONFIG = {
     'lat-pulldown':        '02Qci1-0Aao', // Wide Grip Lat Pulldown — How To (Short)
     'seated-cable-row':    '8QuMq1GMMng', // Seated Cable Row — PROPERLY (Short)
     'bicep-curl':          'YgHnvJQkfhc', // Standing DB Bicep Curls — Proper Form (Short)
-    'hammer-curl':         'NyW2fT2gQhM'  // Hammer Curls — Do's and Don'ts (Short)
+    'hammer-curl':         'NyW2fT2gQhM', // Hammer Curls — Do's and Don'ts (Short)
+
+    // ── Warmup moves ─────────────────────────────────────────────────────────
+    'arm-circles':        'RN40wyH6x9o', // How To Do Arm Circles Properly (Short)
+    'shoulder-rolls':     'A7kgx8gGmPA', // Shoulder Roll (Short)
+    'band-pull-apart':    'qi2y-eI_kuI', // How to do a Band Pull Apart (Short)
+    'cat-cow':            'MSBOBAIeLqI', // Cat Cow Exercise (Short)
+    'wrist-circles':      'hIFZobrkuC8', // A Quick & Simple Wrist Warm-Up (Short)
+    'childs-pose':        'CHk_NNL5cQU', // Childs Pose Stretch (Short)
+    'glute-bridge-bw':    'X_IGw8U_e38', // How to do Glute Bridges with Perfect Form (Short)
+    'hip-flexor-stretch': '41ReSOu0dh4', // Kneeling Hip Flexor Stretch (Short)
+    'ankle-circles':      'xVUWt-Or5ks', // How to Do Ankle Circles Mobility Warm-Up (Short)
+    'bird-dog-bw':        'LWdKrBi9Lks', // How to PROPERLY Do Bird Dogs (Short)
+    'bw-squat':           'Qgpxx1Bxmgs', // Bodyweight Squat Tutorial (Short)
+    'leg-swings':         '5uFNVJn2It0', // Quick and Effective Dynamic Leg Warm Up (Short)
+    'hip-circles':        'OqR7Tl6SPLQ', // Standing Hip Circles (Short)
+    'walking-lunges-bw':  'jmkd8o_2A6Y', // Walking Lunges — form reference (Short)
+    'lat-stretch':        'y5kPhgcdSvo', // Cable Lat Stretchers (Short)
+    'dead-hang':          '6w0d3mfz25o'  // How To Dead Hang | Jeff Nippard (Short)
   }
 };
