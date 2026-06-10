@@ -42,13 +42,13 @@ const PROGRAM = {
         { id: 'bird-dog-bw',         move: 'Bird Dog (slow)',                detail: '1 × 8 each side', note: 'Lower back braced throughout.' }
       ],
       exercises: [
-        { id: 'hip-thrust',        name: 'Hip Thrust (barbell or dumbbell)', sets: 4, repsTarget: '12',               rest: 75, note: 'Upper back on bench, drive through heels, full glute squeeze at top.' },
+        { id: 'hip-thrust',        name: 'Hip Thrust (barbell or dumbbell)', sets: 3, repsTarget: '12',               rest: 75, note: 'Upper back on bench, drive through heels, full glute squeeze at top.' },
+        { id: 'plank',             name: 'Plank',                            sets: 3, repsTarget: '30–45 sec',        rest: 45, note: "Back recovers here. Posterior pelvic tilt — don't let hips sag.", bodyweight: true },
         { id: 'rdl',               name: 'Romanian Deadlift',                sets: 3, repsTarget: '10',               rest: 90, note: 'Hinge at hips, soft knees. Feel the hamstring stretch at the bottom.' },
-        { id: 'back-extension',    name: 'Back Extension (hyperextension)',  sets: 3, repsTarget: '15',               rest: 60, note: 'Bodyweight. Control the descent. Squeeze glutes and lower back at top.', bodyweight: true },
+        { id: 'dead-bug',          name: 'Dead Bug',                         sets: 3, repsTarget: '6 / side',         rest: 45, note: 'Lower back flat to floor. Slow, breathing out. Build to 8/side over weeks.', bodyweight: true },
         { id: 'cable-pull-through',name: 'Cable Pull-Through',               sets: 3, repsTarget: '15',               rest: 60, note: 'Rope between legs, hip hinge. Squeeze glutes hard at the top.' },
-        { id: 'plank',             name: 'Plank',                            sets: 3, repsTarget: '30–45 sec',        rest: 45, note: "Posterior pelvic tilt — don't let hips sag or pike.", bodyweight: true },
-        { id: 'dead-bug',          name: 'Dead Bug',                         sets: 3, repsTarget: '8 / side',         rest: 45, note: 'Lower back flat to floor throughout. Slow and controlled.', bodyweight: true },
-        { id: 'side-plank',        name: 'Side Plank',                       sets: 2, repsTarget: '20–30 sec / side', rest: 45, note: '', bodyweight: true }
+        { id: 'side-plank',        name: 'Side Plank',                       sets: 2, repsTarget: '20–30 sec / side', rest: 45, note: '', bodyweight: true },
+        { id: 'back-extension',    name: 'Back Extension (optional)',         sets: 2, repsTarget: '12–15',            rest: 60, note: 'Skip this if your back is already fatigued. Add it once the rest feels easy.', bodyweight: true }
       ],
       finisher: { name: 'Cybex bike — easy pace', duration: 10 }
     },
